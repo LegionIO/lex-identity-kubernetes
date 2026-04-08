@@ -66,10 +66,10 @@ module Legion
             token ||= read_sa_token
             return nil unless token
 
-            logical = if defined?(Legion::Crypt::LeaseManager)
-                        Legion::Crypt::LeaseManager.instance.vault_logical
-                      elsif defined?(::Vault)
-                        ::Vault.logical
+            logical = if defined?(Legion::Crypt::LeaseManager) &&
+                         Legion::Crypt::LeaseManager.respond_to?(:instance)
+                        lease_manager = Legion::Crypt::LeaseManager.instance
+                        lease_manager.vault_logical if lease_manager.respond_to?(:vault_logical)
                       end
             return nil unless logical
 
@@ -94,6 +94,7 @@ module Legion
 
           def self.vault_available?
             defined?(Legion::Crypt::LeaseManager) &&
+              Legion::Crypt::LeaseManager.respond_to?(:instance) &&
               Legion::Crypt::LeaseManager.instance.respond_to?(:vault_logical)
           end
           private_class_method :vault_available?

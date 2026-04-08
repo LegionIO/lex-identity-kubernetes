@@ -1,8 +1,8 @@
 # lex-identity-kubernetes: Kubernetes Service Account Identity Provider
 
 **Repository Level 3 Documentation**
-- **Parent (Level 2)**: `/Users/miverso2/rubymine/legion/extensions/CLAUDE.md`
-- **Parent (Level 1)**: `/Users/miverso2/rubymine/legion/CLAUDE.md`
+- **Parent (Level 2)**: `extensions/CLAUDE.md`
+- **Parent (Level 1)**: `legion/CLAUDE.md`
 
 ## Purpose
 

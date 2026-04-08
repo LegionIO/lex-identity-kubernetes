@@ -3,5 +3,4 @@
 #
 # To apply: scripts/apply-codeowners.sh lex-identity-kubernetes
 
-* @LegionIO/maintainers
-* @LegionIO/extensions
+* @LegionIO/maintainers @LegionIO/extensions

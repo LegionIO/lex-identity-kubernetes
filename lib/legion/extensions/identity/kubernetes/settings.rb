@@ -15,7 +15,7 @@ module Legion
           def self.load
             return unless defined?(Legion::Settings)
 
-            Legion::Settings.merge_settings(:kubernetes, DEFAULTS)
+            Legion::Settings.merge_settings(:identity, { kubernetes: DEFAULTS })
           end
 
           def self.get

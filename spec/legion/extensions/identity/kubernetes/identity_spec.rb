@@ -54,7 +54,7 @@ RSpec.describe Legion::Extensions::Identity::Kubernetes::Identity do
       expect(identity.priority).to eq(95)
     end
 
-    it 'is higher than approle (100) is higher priority but kubernetes is 95' do
+    it 'has a provider priority of at least 90' do
       expect(identity.priority).to be >= 90
     end
   end
@@ -191,6 +191,68 @@ RSpec.describe Legion::Extensions::Identity::Kubernetes::Identity do
         expect(identity.resolve).to be_nil
       end
     end
+
+    context 'when Vault is available and login succeeds' do
+      let(:vault_metadata) do
+        { kubernetes_namespace: 'legionio', kubernetes_service_account: 'legion-worker' }
+      end
+      let(:vault_auth_response) do
+        double('VaultResponse',
+               auth: double('VaultAuth',
+                            policies: %w[legionio-read legionio-write],
+                            metadata: vault_metadata))
+      end
+      let(:lease_manager_instance) do
+        instance_double('Legion::Crypt::LeaseManager').tap do |lm|
+          allow(lm).to receive(:respond_to?).with(:vault_logical).and_return(true)
+          allow(lm).to receive(:vault_logical).and_return(double('Logical').tap do |l|
+            allow(l).to receive(:write).and_return(vault_auth_response)
+          end)
+        end
+      end
+
+      before do
+        allow(File).to receive(:exist?).with(token_path).and_return(true)
+        allow(File).to receive(:read).with(token_path).and_return(valid_token)
+        allow(File).to receive(:exist?).with(namespace_path).and_return(false)
+
+        stub_const('Legion::Crypt::LeaseManager', Class.new)
+        allow(Legion::Crypt::LeaseManager).to receive(:respond_to?).with(:instance).and_return(true)
+        allow(Legion::Crypt::LeaseManager).to receive(:instance).and_return(lease_manager_instance)
+      end
+
+      it 'returns a hash' do
+        expect(identity.resolve).to be_a(Hash)
+      end
+
+      it 'sets canonical_name from Vault metadata namespace and service account' do
+        expect(identity.resolve[:canonical_name]).to eq('legionio-legion-worker')
+      end
+
+      it 'sets groups from Vault auth policies' do
+        expect(identity.resolve[:groups]).to eq(%w[legionio-read legionio-write])
+      end
+
+      it 'sets verified: true in metadata' do
+        expect(identity.resolve[:metadata][:verified]).to be true
+      end
+
+      it 'sets namespace from Vault metadata' do
+        expect(identity.resolve[:metadata][:namespace]).to eq('legionio')
+      end
+
+      it 'sets service_account from Vault metadata' do
+        expect(identity.resolve[:metadata][:service_account]).to eq('legion-worker')
+      end
+
+      it 'sets source to :kubernetes' do
+        expect(identity.resolve[:source]).to eq(:kubernetes)
+      end
+
+      it 'sets kind to :machine' do
+        expect(identity.resolve[:kind]).to eq(:machine)
+      end
+    end
   end
 
   # --- provide_token ---
@@ -257,7 +319,6 @@ RSpec.describe Legion::Extensions::Identity::Kubernetes::Identity do
     end
 
     context 'when token has no exp claim' do
-      let(:no_exp_token) { build_sa_token(sub: 'system:serviceaccount:legionio:worker', exp: nil) }
       let(:no_exp_token_real) do
         require 'base64'
         header  = Base64.urlsafe_encode64('{"alg":"RS256","typ":"JWT"}', padding: false)
